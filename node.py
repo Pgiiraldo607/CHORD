@@ -134,9 +134,11 @@ class Node:
         ID=int(Id)
         if self.FirstNODE:   #NODO principalo o nodo con la union
 
+            print('\n ip del servido r--- {} \n SUCESOR ANTES DE ACTUALIZAR --- {} \n PREDECESOR ANTES DE ACTUALIZAR --- {}'.format(self.ServerAddress,elf.SucessorNODE,self.PredecessorNODE))
             if self.PredecessorNODE == self.ServerAddress: # si es el único nodo en el anillo
-                if (ID > self.ServerLBi and ID <= self.ServerUBi): #Valido si id nodo nuevo está en rango Izquierdo del nodo Principal
 
+                if (ID > self.ServerLBi and ID <= self.ServerUBi): #Valido si id nodo nuevo está en rango Izquierdo del nodo Principal
+                    print('\n UNICO NODO EN EL ANILLO LADO IZQ\n')
                     self.SucessorNODE=AddressSuc
                     self.PredecessorNODE=AddressSuc
                     auxLBi=self.ServerLBi
@@ -146,6 +148,7 @@ class Node:
                     print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
 
                 elif (ID>=self.ServerLBd and ID < self.ServerUBd): #Valido si id nodo nuevo está en rango Derecho del nodo Principal
+                    print('\n UNICO NODO EN EL ANILLO LADO DERECHO\n')
                     self.FirstNODE=False
                     self.SucessorNODE=AddressSuc
                     self.PredecessorNODE=AddressSuc
@@ -165,11 +168,12 @@ class Node:
 
             else: #Si el  NODO principal no es el unico nodo en el anillo
                 if (ID > self.ServerLBi and ID <= self.ServerUBi):
+                    print('\n HAY MAS NODO EN EL ANILLO LADO DER\n')
                     auxPredecessor=self.PredecessorNODE
                     self.PredecessorNODE=AddressSuc
                     auxLBi=self.ServerLBi
                     self.ServerLBi=ID
-                    scktBINDNode.send_multipart([b'OLeftFNODE',self.ServerAddress.encode(),str(auxLBi).encode(),auxPredecessor.encode()])
+                    scktBINDNode.send_multipart([b'LeftFNODE',self.ServerAddress.encode(),str(auxLBi).encode(),auxPredecessor.encode()])
                     print('\n NEW RESPONSABILITY RANGE:  ({},{}] U [{},{}]'.format(self.ServerLBi,self.ServerUBi,self.ServerLBd,self.ServerUBd))
                     print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
 
