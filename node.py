@@ -47,7 +47,7 @@ class Node:
 
 
     def EntrytoRing(self):
-        #Se genera el primer NODO
+
         if self.FirstNODE:
             self.ServerLBi=self.ServerID
             self.ServerUBi=(1<<6)-1  #numero maximo de los bits del rango
@@ -60,20 +60,22 @@ class Node:
             print('\n RESPONSABILITY RANGE:  ({},{}] U [{},{}]'.format(self.ServerLBi,self.ServerUBi,self.ServerLBd,self.ServerUBd))
             print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
 
-        # Por acá se ingresa cuando ya hay al menos un Nodo en el anillo
-        else:
+        # Por acá se ingresa cuando ya hay al menos un Nodo en el anillo #Se genera el primer NODO
+        else: #proceso para ingresar nodos adicionales
 
             print('\n Insert the address and port of the node through which you want to enter the ring:\n')
-            NodeConnect=input(' Example (IP:PORT) :  ')
+            ConnectTO=input(' Example (IP:PORT) :  ')
+            NodeConnect='tcp://'+ConnectTO
             scktROOTNODE=context.socket(zmq.REQ) #para conectarme no solo con nodo ROOT sino con cualquier nodo
 
 
             while True:
 
-                scktROOTNODE.connect('tcp://'+ NodeConnect)
+                scktROOTNODE.connect(NodeConnect)
                 print(NodeConnect)
                 scktROOTNODE.send_multipart([b'Ismember',str(self.ServerID).encode(),self.ServerAddress.encode()])
                 answ=scktROOTNODE.recv_multipart()
+
                 if answ[0].decode()=='OLeftFNODE': #Si viene del rango Izq del unico nodo del anillo
                     #
                     #answ[0] opcion para dar ver como modificar el nodo nuevo
@@ -86,8 +88,9 @@ class Node:
                     self.ServerUBd=int(self.ServerID)
                     print('\n  RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
                     print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
-                    scktROOTNODE.disconnect('tcp://'+ NodeConnect)
+                    scktROOTNODE.disconnect(NodeConnect)
                     break
+
 
                 elif answ[0].decode() == 'ORightFNODE': #Si viene del rango der. del unico nodo del anillo
                     #
@@ -106,7 +109,7 @@ class Node:
                     self.FirstNODE=True
                     print('\n RESPONSABILITY RANGE:  ({},{}] U [{},{}]'.format(self.ServerLBi,self.ServerUBi,self.ServerLBd,self.ServerUBd))
                     print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
-                    scktROOTNODE.disconnect('tcp://'+ NodeConnect)
+                    scktROOTNODE.disconnect(NodeConnect)
                     break
 
                 elif answ[0].decode() == 'LeftFNODE':
@@ -120,21 +123,70 @@ class Node:
                     self.PredecessorNODE=answ[3].decode()
                     self.ServerLBd=int(answ[2].decode())
                     self.ServerUBd=int(self.ServerID)
-                    scktROOTNODE.disconnect('tcp://'+NodeConnect)
-                    scktROOTNODE.connect('tcp://'+self.PredecessorNODE)
+                    scktROOTNODE.disconnect(NodeConnect)
+                    scktROOTNODE.connect(self.PredecessorNODE)
                     scktROOTNODE.send_multipart([b'UpdateNode','updteSucessor'.encode(),self.ServerAddress.encode()])
                     scktROOTNODE.recv_string()
                     print('\n  RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
                     print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
-                    scktROOTNODE.disconnect('tcp://'+self.PredecessorNODE)
+                    scktROOTNODE.disconnect(self.PredecessorNODE)
+                    break  #Si viene del rango Izq del Nodo union del anillo cuando hay mas nodos
+
+                elif answ[0].decode() == 'RightFNODE':
+                    #
+                    #answ[0] opcion para dar ver como modificar el nodo nuevo
+                    #answ[1] ip para sucesor
+                    #answ[2] ip Para Predecesor
+                    #answ[3] Limite inferior Izquierdo que viene del nodo contactado para generar el rango
+                    #answ[4] Limite superior Izquierdo que viene del nodo contactado para generar el rango
+                    #answ[5] Limite inferior derecho que viene del nodo contactado para generar el rango
+                    #
+                    self.SucessorNODE=answ[1].decode()
+                    self.PredecessorNODE=answ[2].decode()
+                    self.ServerLBi=int(answ[3].decode())
+                    self.ServerUBi=int(answ[4].decode())
+                    self.ServerLBd=int(answ[5].decode())
+                    self.ServerUBd=self.ServerID
+                    self.FirstNODE=True
+                    scktROOTNODE.disconnect(NodeConnect)
+                    scktROOTNODE.connect(self.PredecessorNODE)
+                    scktROOTNODE.send_multipart([b'UpdateNode','updteSucessor'.encode(),self.ServerAddress.encode()])
+                    scktROOTNODE.recv_string()
+                    print('\n RESPONSABILITY RANGE:  ({},{}] U [{},{}]'.format(self.ServerLBi,self.ServerUBi,self.ServerLBd,self.ServerUBd))
+                    print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
+                    scktROOTNODE.disconnect(self.PredecessorNODE)
+                    break #Si Viene del Rango Der del Nodo union del anillo cuando hay mas nodos
+
+                elif answ[0].decode() == 'RegularNODE':
+                    #
+                    #answ[1] IP para SUCESOR
+                    #answ[2] IP para PREDECESOR
+                    #answ[3] Limite Inferior derecho para aramar Rango
+                    #
+                    self.SucessorNODE= answ[1].decode()
+                    self.PredecessorNODE= answ[2].decode()
+                    self.ServerLBd= int(answ[3].decode())
+                    self.ServerUBd= self.ServerID
+                    scktROOTNODE.disconnect(NodeConnect)
+                    scktROOTNODE.connect(self.PredecessorNODE)
+                    scktROOTNODE.send_multipart([b'UpdateNode','updteSucessor'.encode(),self.ServerAddress.encode()])
+                    scktROOTNODE.recv_string()
+                    print('\n  RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
+                    print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
+                    scktROOTNODE.disconnect(self.PredecessorNODE)
                     break
+
+                elif answ[0].decode() == 'NotMember': # Cuando el Nodo Union cuando hay mas nodos no es el responsable del Id del nuevo nodo
+                    scktROOTNODE.disconnect(NodeConnect)
+                    NodeConnect=answ[1].decode()
+
 
 
     def Ismember(self,Id,AddressSuc):
         ID=int(Id)
         if self.FirstNODE:   #NODO principalo o nodo con la union
 
-            print('\n ip del servido r--- {} \n SUCESOR ANTES DE ACTUALIZAR --- {} \n PREDECESOR ANTES DE ACTUALIZAR --- {}'.format(self.ServerAddress,elf.SucessorNODE,self.PredecessorNODE))
+            print('\n ip del servido r--- {} \n SUCESOR ANTES DE ACTUALIZAR --- {} \n PREDECESOR ANTES DE ACTUALIZAR --- {}'.format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
             if self.PredecessorNODE == self.ServerAddress: # si es el único nodo en el anillo
 
                 if (ID > self.ServerLBi and ID <= self.ServerUBi): #Valido si id nodo nuevo está en rango Izquierdo del nodo Principal
@@ -159,16 +211,14 @@ class Node:
                     self.ServerUBi = 0
                     self.ServerLBd = ID
                     self.ServerUBd = self.ServerID
-                    scktBINDNode.send_multipart([b'ORightFNODE',self.ServerAddress.endoce(),str(auxLBi).encode(),str(auxUBi).encode(),str(auxLBd).encode()])
+                    scktBINDNode.send_multipart([b'ORightFNODE',self.ServerAddress.encode(),str(auxLBi).encode(),str(auxUBi).encode(),str(auxLBd).encode()])
                     print('\n NEW RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
                     print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
-                else:
-                    Print('No se pa que hice esto, no es necesario')
-                    #send_multipart([b'Not Member',self.SucessorNODE.encode()])
+
 
             else: #Si el  NODO principal no es el unico nodo en el anillo
                 if (ID > self.ServerLBi and ID <= self.ServerUBi):
-                    print('\n HAY MAS NODO EN EL ANILLO LADO DER\n')
+                    print('\n HAY MAS NODO EN EL ANILLO LADO IZQ\n')
                     auxPredecessor=self.PredecessorNODE
                     self.PredecessorNODE=AddressSuc
                     auxLBi=self.ServerLBi
@@ -179,18 +229,46 @@ class Node:
 
                 elif (ID>=self.ServerLBd and ID < self.ServerUBd):
 
+                    self.FirstNODE=False
+                    auxPredecessor=self.PredecessorNODE
+                    self.PredecessorNODE=AddressSuc
+                    auxLBi=self.ServerLBi
+                    auxUBi=self.ServerUBi
+                    auxLBd=self.ServerLBd
+                    self.ServerLBi = 0
+                    self.ServerUBi = 0
+                    self.ServerLBd = ID
+                    self.ServerUBd = self.ServerID
+                    scktBINDNode.send_multipart([b'RightFNODE',self.ServerAddress.encode(),auxPredecessor.encode(),str(auxLBi).encode(),str(auxUBi).encode(),str(auxLBd).encode()])
                     print('\n NEW RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
+                    print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
 
-        else:
+                else:
+                    print('Member Not Found')
+                    scktBINDNode.send_multipart([b'NotMember',self.SucessorNODE.encode()])
+
+        else:  #Si estamos preguntando a un nodo que no es el principal
             if (ID > self.ServerLBd and ID < self.ServerUBd):
                 auxPredecessor=self.PredecessorNODE
                 self.PredecessorNODE=AddressSuc
                 auxLBd=self.ServerLBd
                 self.ServerLBd=ID
-                scktBINDNode.send_multipart(['MemberFound'])
+                scktBINDNode.send_multipart([b'RegularNODE', self.ServerAddress.encode(), auxPredecessor.encode(), str(auxLBd).encode()])
+                print('\n  RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
+                print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
+
+            else:
+                print('Member Not Found')
+                scktBINDNode.send_multipart([b'NotMember',self.SucessorNODE.encode()])
 
     def UpdateNode(self,ItemUpdate,SucessorNdIN):
         self.SucessorNODE=SucessorNdIN
+        if self.FirstNODE:
+            print('\n RESPONSABILITY RANGE:  ({},{}] U [{},{}]'.format(self.ServerLBi,self.ServerUBi,self.ServerLBd,self.ServerUBd))
+            print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
+        else:
+            print('\n  RESPONSABILITY RANGE:  ({},{}]'.format(self.ServerLBd,self.ServerUBd))
+            print("\n ServerAddress --> {},\n Sucessor --> {},\n Predecesor --> {}".format(self.ServerAddress,self.SucessorNODE,self.PredecessorNODE))
         scktBINDNode.send_string('Sucessor Updated')
 
 def ConnectNODE():
@@ -236,7 +314,7 @@ def RunningServer():
 
             ItemUdate = OpcREQ[1].decode()
             ValueUpdate = OpcREQ[2].decode()
-            MyNode.UpdateNode(ID,ItemUdate,ValueUpdate)
+            MyNode.UpdateNode(ItemUdate,ValueUpdate)
 
 def main():
 
