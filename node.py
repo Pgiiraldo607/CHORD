@@ -289,14 +289,11 @@ def ConnectNODE():
 
     print('\n    NODE CONNECTED    \n')
 
-
-
-
 def RunningServer():
     while True:
 
         #  Wait for next request from client an Storage Svr
-        print (" NODE Waiting Request")
+        print (" NODE Waiting Request\n")
         OpcREQ = scktBINDNode.recv_multipart()
         Opc=OpcREQ[0]
         print('Option Selected: ' + Opc.decode())
@@ -315,6 +312,7 @@ def RunningServer():
             ItemUdate = OpcREQ[1].decode()
             ValueUpdate = OpcREQ[2].decode()
             MyNode.UpdateNode(ItemUdate,ValueUpdate)
+        
 
 def main():
 
